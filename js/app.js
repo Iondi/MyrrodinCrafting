@@ -1,9 +1,9 @@
 // =====================================================================
 //  MYR'RODIN CRAFTING — the panel
 // =====================================================================
-import * as S from "./store.js?v=1.3.0";
-import * as R from "./rules.js?v=1.3.0";
-import { roll } from "./dice.js?v=1.3.0";
+import * as S from "./store.js?v=1.4.0";
+import * as R from "./rules.js?v=1.4.0";
+import { roll } from "./dice.js?v=1.4.0";
 
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const fmt = (n) => (n >= 0 ? `+${n}` : `${n}`);
@@ -219,7 +219,7 @@ function weeklyTab() {
     <h3>Weekly roll</h3>
     <p class="muted small">First choose how many of the ${n} dice go to each, then roll. Fans die: <b>d${die}</b>.</p>
     <div class="wplan">${POOLS.map(([k, label]) => `<div class="wpool">
-      <span>${label}${k === "notoriety" ? ` <small class="faint">${e.notorietyDie.replace(/^1/, "")} each${e.notorietyMultiplier !== 1 ? ` · ×${e.notorietyMultiplier}` : ""}</small>` : ""}${k === "rp" && e.researchMultiplier !== 1 ? ` <small class="faint">×${e.researchMultiplier}</small>` : ""}</span>
+      <span>${label}${k === "notoriety" ? ` <small class="faint">${e.notorietyDie.replace(/^1/, "")} each${e.notorietyMultiplier !== 1 ? ` · ×${e.notorietyMultiplier}` : ""}</small>` : ""}${k === "rp" ? ` <small class="faint">${e.researchDie.replace(/^1/, "")} each${e.researchMultiplier !== 1 ? ` · ×${e.researchMultiplier}` : ""}${e.noHighRollBonus ? " · no 90+ bonus" : ""}</small>` : ""}</span>
       <div class="step"><button data-act="plan" data-pool="${k}" data-d="-1" ${plan[k] <= 0 ? "disabled" : ""}>−</button><b>${plan[k]}</b><button data-act="plan" data-pool="${k}" data-d="1" ${left <= 0 ? "disabled" : ""}>+</button></div>
     </div>`).join("")}</div>
     <p class="small ${left ? "bad" : "good"}">${left ? `${left} ${left === 1 ? "die" : "dice"} left to assign.` : `All ${n} dice assigned.`}</p>
@@ -229,7 +229,7 @@ function weeklyTab() {
     ${isGM() ? `<button class="link small" data-act="nextweekall">${armed === "nextweekall" ? "Click again: new week for everyone" : "New week for everyone"}</button>` : ""}
     ${isGM() ? `<label class="chk gm-only" title="Only you see this"><input type="checkbox" data-weeks ${weeksFor() === 2 ? "checked" : ""} /> <span>Two weeks: next roll is ${(Number(String(R.HOUSE.weeklyDice).split("d")[0]) || 7) * 2}d100 <small class="faint">(GM only · goes back to one week after the roll)</small></span></label>` : ""}
     <details class="small muted"><summary>How Immortal Fans are worked out</summary>
-      <p>Each d100 for Fans is worth Fans dice: under 50 nothing, 50s 1, 60s 2, 70s 3, 80s 4, 90s 5, a natural 100 gives 10. A 90 or more makes the Fans die 2 sides bigger straight away: its own dice and every one after it use the bigger die (d2: 71 63 92 88 15 82 71 → 5d2 + 16d4). Notoriety: each d100 over 50 gives 1 Notoriety die, 90 or more gives 2; the Notoriety die comes from the Fans tier (d4, d6 from Tier III, d10 from Tier VIII), then Tier I halves it and Tier IV+ doubles it. Research Points add the number rolled.</p>
+      <p>Each d100 for Fans is worth Fans dice: under 50 nothing, 50s 1, 60s 2, 70s 3, 80s 4, 90s 5, a natural 100 gives 10. A 90 or more makes the Fans die 2 sides bigger straight away: its own dice and every one after it use the bigger die (d2: 71 63 92 88 15 82 71 → 5d2 + 16d4). Notoriety: each d100 over 50 gives 1 Notoriety die, 90 or more gives 2; the Notoriety die comes from the Fans tier (d4, d6 from Tier III, d10 from Tier VIII), then Tier I halves it and Tier IV+ doubles it. Research Points work the same way, with the Research die from the Notoriety rank (d4, d6 from The Litching Hour, d10 from Executive); Wild Sheep Chase cancels the 90+ bonus and Fans Tier VI+ doubles it.</p>
     </details>
   </section>${last}`;
 }
@@ -254,7 +254,10 @@ function mathWindow() {
       <table class="ref math-t"><tbody>${w.rolls.notoriety.map((v) => { const k = R.notorietyDiceFor(v); return `<tr class="${k ? "" : "none"}"><td><b>${v}</b></td><td>${v >= 90 ? `90 or more → 2${esc(w.nDie)}` : v > 50 ? `over 50 → 1${esc(w.nDie)}` : "50 or under → nothing"}</td></tr>`; }).join("")}</tbody></table>
       <p class="small">Rolled <b>${esc(w.notorietyExpr || "nothing")}</b>${w.notorietyDetail ? `: <span class="faint">${esc(w.notorietyDetail)}</span>` : ""} = ${num(w.nRolled)}${mult.n !== 1 ? ` × ${mult.n} (${mult.n < 1 ? "Fans Tier I halves it" : "Fans Tier IV+ doubles it"})` : ""} = <b class="good">+${num(w.gain?.notoriety)} Notoriety</b></p>`
       : `<h4>Notoriety</h4><p class="small">${w.rolls.notoriety.join(" + ")} = ${sum(w.rolls.notoriety)}${mult.n !== 1 ? ` × ${mult.n}` : ""} = <b class="good">+${num(w.gain?.notoriety)}</b> <span class="faint">(old rule)</span></p>`) : ""}
-    ${(w.rolls.rp || []).length ? `<h4>Research Points</h4><p class="small">${w.rolls.rp.join(" + ")} = ${sum(w.rolls.rp)}${mult.r !== 1 ? ` × ${mult.r} (Fans tier)` : ""} = <b class="good">+${num(w.gain?.rp)}</b></p>` : ""}
+    ${(w.rolls.rp || []).length ? (w.rDie ? `<h4>Research Points <small class="faint">(Research die ${esc(w.rDie)}, from the Notoriety rank)</small></h4>
+      <table class="ref math-t"><tbody>${w.rolls.rp.map((v) => { const k = R.researchDiceFor(v, w.wildSheep); return `<tr class="${k ? "" : "none"}"><td><b>${v}</b></td><td>${v >= 90 ? (w.wildSheep ? `90 or more → 1${esc(w.rDie)} <span class="bad">(Wild Sheep Chase: no 90+ bonus)</span>` : `90 or more → 2${esc(w.rDie)}`) : v > 50 ? `over 50 → 1${esc(w.rDie)}` : "50 or under → nothing"}</td></tr>`; }).join("")}</tbody></table>
+      <p class="small">Rolled <b>${esc(w.researchExpr || "nothing")}</b>${w.researchDetail ? `: <span class="faint">${esc(w.researchDetail)}</span>` : ""} = ${num(w.rRolled)}${mult.r !== 1 ? ` × ${mult.r} (Fans Tier VI+ doubles it)` : ""} = <b class="good">+${num(w.gain?.rp)} Research Points</b></p>`
+      : `<h4>Research Points</h4><p class="small">${w.rolls.rp.join(" + ")} = ${sum(w.rolls.rp)}${mult.r !== 1 ? ` × ${mult.r}` : ""} = <b class="good">+${num(w.gain?.rp)}</b> <span class="faint">(old rule)</span></p>`) : ""}
     <button class="primary" data-act="closemath">Got it</button>
   </div>`;
 }
@@ -275,7 +278,7 @@ function rulesTab() {
     <li><b>Weekly:</b> choose how many of the ${R.HOUSE.weeklyDice} go to Immortal Fans, Notoriety and Research Points, then roll.</li>
     <li><b>Immortal Fans:</b> each d100 given to Fans is worth Fans dice: under 50 nothing, 50s 1, 60s 2, 70s 3, 80s 4, 90s 5, a natural 100 gives 10. Everyone starts with a d2; every 90 or more makes it 2 sides bigger (d2 → d4 → d6…), starting with that die's own Fans dice. Add up the Fans dice for new fans.</li>
     <li><b>Notoriety:</b> each d100 given to Notoriety that's over 50 gives 1 Notoriety die; 90 or more gives 2. The Notoriety die is set by the Fans tier (d4, d6 from Tier III, d10 from Tier VIII). The total is halved at Fans Tier I and doubled from Tier IV.</li>
-    <li><b>Research Points:</b> a d100 given to Research adds its number (doubled from Fans Tier VI).</li>
+    <li><b>Research Points:</b> each d100 given to Research that's over 50 gives 1 Research die; 90 or more gives 2 (just 1 during Wild Sheep Chase). The Research die is set by the Notoriety rank (d4; d6 from The Litching Hour; d10 from Executive). The total is doubled from Fans Tier VI.</li>
     <li>Penalties (Cause for Concern, Wild Sheep Chase, Tier I) only apply in that rank; bonuses carry into every rank above.</li>
   </ul></section>`;
 }
@@ -360,12 +363,17 @@ async function doWeekly() {
   const nDie = e.notorietyDie.replace(/^1/, "");
   let nRolled = 0, notorietyExpr = "", notorietyDetail = "";
   if (nCount) { notorietyExpr = `${nCount}${nDie}`; const r = roll(notorietyExpr); nRolled = r.total; notorietyDetail = r.detail; share(`Notoriety (${notorietyExpr})`, r); }
-  const gain = { fans, notoriety: Math.floor(nRolled * e.notorietyMultiplier), rp: Math.floor(sum(rolls.rp) * e.researchMultiplier) };
+  // Research: same idea, with the Research die from the Notoriety rank.
+  const rCount = rolls.rp.reduce((t, v) => t + R.researchDiceFor(v, e.noHighRollBonus), 0);
+  const rDie = e.researchDie.replace(/^1/, "");
+  let rRolled = 0, researchExpr = "", researchDetail = "";
+  if (rCount) { researchExpr = `${rCount}${rDie}`; const r = roll(researchExpr); rRolled = r.total; researchDetail = r.detail; share(`Research Points (${researchExpr})`, r); }
+  const gain = { fans, notoriety: Math.floor(nRolled * e.notorietyMultiplier), rp: Math.floor(rRolled * e.researchMultiplier) };
   const result = `+${gain.fans} fans${fp.expr ? ` (${fp.expr})` : ""}, +${gain.notoriety} notoriety, +${gain.rp} RP`;
   await save((x) => {
     x.fans = num(x.fans) + gain.fans; x.notoriety = num(x.notoriety) + gain.notoriety; x.rp = num(x.rp) + gain.rp;
     x.fansDie = fp.endDie;
-    x.weekly = { at: Date.now(), applied: true, plan, rolls, gain, fansExpr: fp.expr, fansDetail, notorietyExpr, notorietyDetail, nRolled, nDie, dieFrom, dieTo: fp.endDie, result, weeks: weeksFor(), mult: { n: e.notorietyMultiplier, r: e.researchMultiplier } };
+    x.weekly = { at: Date.now(), applied: true, plan, rolls, gain, fansExpr: fp.expr, fansDetail, notorietyExpr, notorietyDetail, nRolled, nDie, researchExpr, researchDetail, rRolled, rDie, wildSheep: e.noHighRollBonus, dieFrom, dieTo: fp.endDie, result, weeks: weeksFor(), mult: { n: e.notorietyMultiplier, r: e.researchMultiplier } };
     x.weeks = 1;
   }, `${weeksFor() === 2 ? "Two-week roll" : "Weekly"}: ${result}${fp.endDie !== dieFrom ? `; Fans die now d${fp.endDie}` : ""}`);
   busy = false;

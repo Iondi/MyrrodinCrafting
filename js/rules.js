@@ -41,6 +41,16 @@ export function notorietyDiceFor(v) {
   return v >= 90 ? 2 : v > 50 ? 1 : 0;
 }
 
+// Research Points from a weekly d100: same as Notoriety (over 50 → 1 die,
+// 90+ → 2), but Wild Sheep Chase cancels the 90+ bonus. The Research die
+// comes from the Notoriety rank (d4, d6 from The Litching Hour, d10 from
+// Executive); Fans Tier VI doubles the total.
+export function researchDiceFor(v, noHighRollBonus = false) {
+  v = Number(v) || 0;
+  if (v >= 90) return noHighRollBonus ? 1 : 2;
+  return v > 50 ? 1 : 0;
+}
+
 // Step by step, for the GM's "show the math" window.
 export function explainFans(values, startDie) {
   let size = Number(startDie) || HOUSE.fansDieStart;
