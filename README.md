@@ -53,3 +53,22 @@ Everything is in `js/rules.js`. At the top, **HOUSE** has the switches:
 | `weeklyDice` | 7d100 |
 
 The ranks, DCs, material costs, Notoriety ranks and Fans tiers are the tables below that.
+
+## Google Sheet: write everything back (GM)
+
+The extension can keep your **Craft Master Sheet** up to date: one tab per crafting character (same layout as "Kay den"), plus a **Crafting Log** tab with every roll, craft, gather and weekly roll.
+
+**One-time setup (about 5 minutes):**
+1. Open the Craft Master Sheet → **Extensions → Apps Script**.
+2. Delete what's in the editor, paste in all of `apps-script/Code.gs`, and change `SECRET = 'change-me'` to a password of your own. Click **Save** (💾).
+3. **Deploy → New deployment** → click the gear → **Web app**. Set *Execute as*: **Me**, *Who has access*: **Anyone**. Click **Deploy**, then **Authorize access** and allow it (Google warns that the app isn't verified: click **Advanced → Go to … (unsafe)**; it's your own script).
+4. Copy the **Web app URL** (ends in `/exec`).
+5. In Owlbear: Crafting → **Overview** → **📗 Google Sheet** (bottom, GM only). Paste the link and your SECRET, click **Connect**.
+
+**Using it:**
+- Changes are written a few seconds after they happen, while the GM has Owlbear open.
+- A character gets a tab as soon as they use crafting (any proficiency, rank, Research Points, Notoriety, Fans, materials or roll). New tabs copy the look of an existing character tab. "Kayden" finds the existing "Kay den" tab.
+- **⇩ Load tabs from the sheet** brings the sheet's numbers into Owlbear (use it once to bring in Kayden and Elisio). **⟳ Write everyone now** pushes everyone to the sheet.
+- What's written to each tab: the Proficient/Expert/Mastery boxes, rank and ability for every category, Research Points (L3), crafting successes (L6), materials (L10–L34), crafting level (A31), Notoriety with its die (D31) and Immortal Fans with the Fans die (F31). Notes you type elsewhere on a tab are left alone.
+
+If you change the script later, use **Deploy → Manage deployments → ✏ → Version: New version → Deploy** so the link stays the same.
