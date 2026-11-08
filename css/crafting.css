@@ -127,3 +127,15 @@ td { padding: 6px 4px; border-top: 1px solid var(--line); vertical-align: middle
 .wsum > div { display: grid; gap: 2px; text-align: center; padding: 8px 4px; border-radius: 10px; background: var(--raised); }
 .wsum b { font: 600 15px var(--display); overflow-wrap: anywhere; }
 .wsum small { font-size: 10px; color: var(--faint); }
+.wplan { display: grid; gap: 6px; margin: 8px 0 4px; }
+.wpool { display: flex; align-items: center; justify-content: space-between; padding: 8px 10px; border-radius: 10px; background: var(--raised); }
+.step { display: flex; align-items: center; gap: 10px; }
+.step b { font: 700 18px var(--display); min-width: 18px; text-align: center; }
+.step button { width: 32px; height: 32px; padding: 0; border-radius: 50%; font-size: 17px; line-height: 1; }
+.wres { display: grid; grid-template-columns: 96px 1fr auto; gap: 8px; align-items: center; padding: 6px 0; border-top: 1px solid var(--line); }
+.wres:first-of-type { border-top: 0; }
+.wres b { font: 600 15px var(--display); text-align: right; }
+.wvals { display: flex; flex-wrap: wrap; gap: 4px; }
+.wvals span { padding: 1px 6px; border-radius: 6px; background: var(--sunken); font-size: 12px; }
+.wvals span.hot { color: var(--gold); box-shadow: 0 0 0 1px #d8b46a88; }
+details summary { cursor: pointer; margin-top: 8px; }

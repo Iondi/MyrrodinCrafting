@@ -1,9 +1,9 @@
 // =====================================================================
 //  MYR'RODIN CRAFTING — the panel
 // =====================================================================
-import * as S from "./store.js?v=1.1.0";
-import * as R from "./rules.js?v=1.1.0";
-import { roll } from "./dice.js?v=1.1.0";
+import * as S from "./store.js?v=1.2.0";
+import * as R from "./rules.js?v=1.2.0";
+import { roll } from "./dice.js?v=1.2.0";
 
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const fmt = (n) => (n >= 0 ? `+${n}` : `${n}`);
@@ -182,46 +182,41 @@ function gatherTab() {
   </section>`;
 }
 
-const POOLS = [["F", "Fans"], ["N", "Notoriety"], ["R", "Research"]];
-function weeklyPreview(c, w) {
-  const e = R.effects(c), assign = w.assign || w.dice.map(() => "F");
-  const fanVals = w.dice.filter((_, i) => assign[i] === "F");
-  const plan = R.planFans(fanVals, c.fansDie || R.HOUSE.fansDieStart);
-  const nRaw = w.dice.reduce((t, v, i) => t + (assign[i] === "N" ? v : 0), 0);
-  const rRaw = w.dice.reduce((t, v, i) => t + (assign[i] === "R" ? v : 0), 0);
-  return { assign, plan, e, gainN: Math.floor(nRaw * e.notorietyMultiplier), gainR: Math.floor(rRaw * e.researchMultiplier), nRaw, rRaw };
-}
+// Weekly: choose how many of the 7d100 go to each pool FIRST, then roll.
+const POOLS = [["fans", "Immortal Fans"], ["notoriety", "Notoriety"], ["rp", "Research Points"]];
+const weeklyPlan = {}; // character id -> { fans, notoriety, rp }
+const totalWeeklyDice = () => Number(String(R.HOUSE.weeklyDice).split("d")[0]) || 7;
+const planFor = () => weeklyPlan[current] || (weeklyPlan[current] = { fans: totalWeeklyDice(), notoriety: 0, rp: 0 });
+
 function weeklyTab() {
-  const c = rec(), w = c.weekly;
+  const c = rec(), e = R.effects(c), w = c.weekly;
   const die = c.fansDie || R.HOUSE.fansDieStart;
-  if (!w || w.applied || !Array.isArray(w.dice)) {
-    return `<section class="card center">
-      <h3>Weekly roll</h3>
-      <p class="muted small">Roll ${R.HOUSE.weeklyDice}, then give each die to Immortal Fans, Notoriety or Research Points.</p>
-      <button class="primary big-btn" data-act="weekly" ${canAct() && !busy ? "" : "disabled"}>🎲 Roll ${R.HOUSE.weeklyDice}</button>
-      <p class="small muted">Fans die: <b>d${die}</b></p>
-      ${w?.applied ? `<p class="small faint">Last week (${new Date(w.at).toLocaleDateString()}): ${esc(w.result || "")}</p>` : ""}
-    </section>`;
-  }
-  const p = weeklyPreview(c, w);
+  const plan = planFor(), n = totalWeeklyDice();
+  const left = n - plan.fans - plan.notoriety - plan.rp;
+  // One weekly roll per character until the GM starts the next week.
+  const locked = !!(w?.applied && !w.nextWeek);
+  const last = w?.applied && w.rolls ? `<section class="card">
+      <div class="row"><h3>Last weekly roll</h3><small class="faint">${new Date(w.at).toLocaleDateString()}</small></div>
+      ${POOLS.map(([k, label]) => w.rolls[k]?.length ? `<div class="wres"><span class="lbl">${label}</span>
+        <div class="wvals">${w.rolls[k].map((v) => `<span class="${k === "fans" && v >= R.HOUSE.fansGrowAt ? "hot" : ""}">${v}</span>`).join("")}</div>
+        <b>${k === "fans" ? `+${w.gain.fans}${w.fansExpr ? ` <small class="faint">${esc(w.fansExpr)}</small>` : " <small class=\"faint\">no dice of 50+</small>"}` : `+${w.gain[k]}`}</b></div>` : "").join("")}
+      ${w.dieFrom !== w.dieTo ? `<p class="small good">Fans die grew: d${w.dieFrom} → d${w.dieTo}</p>` : ""}
+    </section>` : "";
   return `<section class="card">
-    <div class="row"><h3>This week's ${R.HOUSE.weeklyDice}</h3><span class="chip">Fans die <b>d${die}</b>${p.plan.endDie !== die ? ` → <b class="good">d${p.plan.endDie}</b>` : ""}</span></div>
-    <p class="muted small">Tap where each die goes. For Fans: 50s give 1 die, 60s 2, 70s 3, 80s 4, 90s 5, a 100 gives 10. A 90 or more makes the Fans die bigger by 2 straight away.</p>
-    <div class="wdice">${w.dice.map((v, i) => {
-      const n = R.fansDiceFor(v);
-      return `<div class="wdie ${v >= R.HOUSE.fansGrowAt ? "hot" : ""} ${v === 100 ? "max" : ""}">
-        <b>${v}</b><small>${n ? `${n} fan ${n === 1 ? "die" : "dice"}` : "0 fan dice"}</small>
-        <div class="pools">${POOLS.map(([k, label]) => `<button class="${p.assign[i] === k ? "on" : ""}" data-act="assign" data-i="${i}" data-pool="${k}" title="${label}" ${canAct() ? "" : "disabled"}>${k}</button>`).join("")}</div>
-      </div>`;
-    }).join("")}</div>
-    <div class="wsum">
-      <div><span class="lbl">Immortal Fans</span><b>${p.plan.expr || "nothing"}</b></div>
-      <div><span class="lbl">Notoriety</span><b>+${p.gainN}</b>${p.e.notorietyMultiplier !== 1 && p.nRaw ? `<small>${p.nRaw} × ${p.e.notorietyMultiplier}</small>` : ""}</div>
-      <div><span class="lbl">Research</span><b>+${p.gainR}</b>${p.e.researchMultiplier !== 1 && p.rRaw ? `<small>${p.rRaw} × ${p.e.researchMultiplier}</small>` : ""}</div>
-    </div>
-    <button class="primary" data-act="applyweek" ${canAct() && !busy ? "" : "disabled"}>Roll the Fans dice & apply</button>
-    ${isGM() ? `<button class="link small" data-act="reroll">Throw this roll away</button>` : ""}
-  </section>`;
+    <h3>Weekly roll</h3>
+    <p class="muted small">First choose how many of the ${n} dice go to each, then roll. Fans die: <b>d${die}</b>.</p>
+    <div class="wplan">${POOLS.map(([k, label]) => `<div class="wpool">
+      <span>${label}${k === "notoriety" && e.notorietyMultiplier !== 1 ? ` <small class="faint">×${e.notorietyMultiplier}</small>` : ""}${k === "rp" && e.researchMultiplier !== 1 ? ` <small class="faint">×${e.researchMultiplier}</small>` : ""}</span>
+      <div class="step"><button data-act="plan" data-pool="${k}" data-d="-1" ${plan[k] <= 0 ? "disabled" : ""}>−</button><b>${plan[k]}</b><button data-act="plan" data-pool="${k}" data-d="1" ${left <= 0 ? "disabled" : ""}>+</button></div>
+    </div>`).join("")}</div>
+    <p class="small ${left ? "bad" : "good"}">${left ? `${left} ${left === 1 ? "die" : "dice"} left to assign.` : `All ${n} dice assigned.`}</p>
+    ${locked ? `<p class="small muted">✓ This week's roll is done. ${isGM() ? "" : "The GM starts the next week."}</p>` : ""}
+    <button class="primary big-btn" data-act="weekly" ${left === 0 && canAct() && !busy && (!locked || isGM()) ? "" : "disabled"}>🎲 Roll ${R.HOUSE.weeklyDice}</button>
+    ${isGM() && locked ? `<button class="link small" data-act="nextweek">Start the next week (let them roll again)</button>` : ""}
+    <details class="small muted"><summary>How Immortal Fans are worked out</summary>
+      <p>Each d100 for Fans is worth Fans dice: under 50 nothing, 50s 1, 60s 2, 70s 3, 80s 4, 90s 5, a natural 100 gives 10. A 90 or more makes the Fans die 2 sides bigger straight away, for the dice after it. Notoriety and Research Points add the number rolled.</p>
+    </details>
+  </section>${last}`;
 }
 
 function rulesTab() {
@@ -237,7 +232,7 @@ function rulesTab() {
     <li><b>Craft:</b> d20 + the category's ability modifier + proficiency bonus (×1 Proficient, ×2 Expertise, ×2 and advantage for Mastery) against the rank's DC.</li>
     <li>A success uses the materials, counts toward that category, and rolls the <b>Notoriety die</b> and <b>Research die</b> for extra Notoriety and Research Points.</li>
     <li>A failure keeps the materials.</li>
-    <li><b>Weekly:</b> roll ${R.HOUSE.weeklyDice} and give each die to Immortal Fans, Notoriety or Research Points.</li>
+    <li><b>Weekly:</b> choose how many of the ${R.HOUSE.weeklyDice} go to Immortal Fans, Notoriety and Research Points, then roll.</li>
     <li><b>Immortal Fans:</b> each d100 given to Fans is worth Fans dice: under 50 nothing, 50s 1, 60s 2, 70s 3, 80s 4, 90s 5, a natural 100 gives 10. Everyone starts with a d2; every 90 or more makes it 2 sides bigger (d2 → d4 → d6…) for the dice after it. Add up the Fans dice for new fans.</li>
     <li><b>Notoriety and Research Points:</b> a d100 given to them adds its number (Notoriety halved at Fans Tier I and doubled from Tier IV; Research doubled from Fans Tier VI).</li>
     <li>Penalties (Cause for Concern, Wild Sheep Chase, Tier I) only apply in that rank; bonuses carry into every rank above.</li>
@@ -302,31 +297,31 @@ async function doGather(grade) {
 }
 
 async function doWeekly() {
-  busy = true;
-  const r = roll(R.HOUSE.weeklyDice);
-  share("Weekly crafting roll", r);
-  const dice = r.dice.map((d) => d.v);
-  await save((x) => { x.weekly = { dice, assign: dice.map(() => "F"), at: Date.now(), applied: false }; }, `Weekly roll: ${dice.join(" ")}`);
-  busy = false; render();
-}
-async function applyWeek() {
-  const c = rec(), w = c.weekly;
-  const p = weeklyPreview(c, w);
-  busy = true;
-  let fans = 0, detail = "";
-  if (p.plan.expr) {
-    const r = roll(p.plan.expr);
-    fans = r.total; detail = r.detail;
-    share(`Immortal Fans (${p.plan.expr})`, r);
+  const plan = { ...planFor() };
+  if (plan.fans + plan.notoriety + plan.rp !== totalWeeklyDice()) return;
+  busy = true; render();
+  const c = rec(), e = R.effects(c);
+  const rolls = {};
+  for (const [k, label] of POOLS) {
+    if (!plan[k]) { rolls[k] = []; continue; }
+    const r = roll(`${plan[k]}d100`);
+    share(`Weekly: ${plan[k]}d100 for ${label}`, r);
+    rolls[k] = r.dice.map((d) => d.v);
   }
-  const result = `+${fans} fans${p.plan.expr ? ` (${p.plan.expr})` : ""}, +${p.gainN} notoriety, +${p.gainR} RP`;
+  const dieFrom = c.fansDie || R.HOUSE.fansDieStart;
+  const fp = R.planFans(rolls.fans, dieFrom);
+  let fans = 0;
+  if (fp.expr) { const r = roll(fp.expr); fans = r.total; share(`Immortal Fans (${fp.expr})`, r); }
+  const sum = (a) => a.reduce((t, v) => t + v, 0);
+  const gain = { fans, notoriety: Math.floor(sum(rolls.notoriety) * e.notorietyMultiplier), rp: Math.floor(sum(rolls.rp) * e.researchMultiplier) };
+  const result = `+${gain.fans} fans${fp.expr ? ` (${fp.expr})` : ""}, +${gain.notoriety} notoriety, +${gain.rp} RP`;
   await save((x) => {
-    x.fans = num(x.fans) + fans; x.notoriety = num(x.notoriety) + p.gainN; x.rp = num(x.rp) + p.gainR;
-    x.fansDie = p.plan.endDie;
-    x.weekly = { ...x.weekly, applied: true, result };
-  }, `Weekly: ${result}${p.plan.endDie !== (c.fansDie || R.HOUSE.fansDieStart) ? `; Fans die now d${p.plan.endDie}` : ""}`);
+    x.fans = num(x.fans) + gain.fans; x.notoriety = num(x.notoriety) + gain.notoriety; x.rp = num(x.rp) + gain.rp;
+    x.fansDie = fp.endDie;
+    x.weekly = { at: Date.now(), applied: true, plan, rolls, gain, fansExpr: fp.expr, dieFrom, dieTo: fp.endDie, result };
+  }, `Weekly: ${result}${fp.endDie !== dieFrom ? `; Fans die now d${fp.endDie}` : ""}`);
   busy = false; render();
-  S.notify(`Weekly: ${result}${detail ? ` · ${detail}` : ""}`, "SUCCESS");
+  S.notify(`Weekly: ${result}`, "SUCCESS");
 }
 
 // ---- Events ----------------------------------------------------------------------
@@ -360,12 +355,12 @@ app.addEventListener("click", async (e) => {
   if (a === "craft") doCraft(b.dataset.cat);
   if (a === "gather") doGather(b.dataset.grade);
   if (a === "weekly") doWeekly();
-  if (a === "applyweek") applyWeek();
-  if (a === "assign") {
-    const i = num(b.dataset.i), pool = b.dataset.pool;
-    save((x) => { const as = [...(x.weekly.assign || x.weekly.dice.map(() => "F"))]; as[i] = pool; x.weekly = { ...x.weekly, assign: as }; });
+  if (a === "nextweek") save((x) => { x.weekly = { ...x.weekly, nextWeek: true }; }, "GM started the next week");
+  if (a === "plan") {
+    const p = planFor(), d = num(b.dataset.d), left = totalWeeklyDice() - p.fans - p.notoriety - p.rp;
+    if (d > 0 && left <= 0) return;
+    p[b.dataset.pool] = Math.max(0, p[b.dataset.pool] + d); render();
   }
-  if (a === "reroll") save((x) => { x.weekly = null; }, "Weekly roll thrown away by the GM");
   if (a === "remove") {
     if (armed !== "remove") { armed = "remove"; render(); return; }
     armed = ""; await S.removeOne(current); delete records[current]; current = ""; chars = await S.characters(records); pickDefault(); render();
