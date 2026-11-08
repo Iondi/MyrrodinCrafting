@@ -4,9 +4,9 @@
 //  Character stats (ability scores, proficiency) are read from the
 //  Myr'rodin System's character sheets when that extension is on.
 // =====================================================================
-import OBR from "../vendor/obr-sdk.js?v=1.2.0";
-import { inflateSync, strFromU8 } from "../vendor/fflate.js?v=1.2.0";
-import { normalizeCrafter, blankCrafter, abilityMod } from "./rules.js?v=1.2.0";
+import OBR from "../vendor/obr-sdk.js?v=1.2.2";
+import { inflateSync, strFromU8 } from "../vendor/fflate.js?v=1.2.2";
+import { normalizeCrafter, blankCrafter, abilityMod } from "./rules.js?v=1.2.2";
 
 export { OBR };
 export const NS = "com.emberbelle.crafting";

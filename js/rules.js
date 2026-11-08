@@ -31,18 +31,18 @@ export function fansDiceFor(v) {
   return Math.floor(v / 10) - 4;
 }
 // Work out the Fans dice for the d100s given to Fans, in the order rolled.
-// A 90+ grows the die right away: its own dice use the old size, every die
-// after it uses the bigger one.
+// A 90+ grows the die right away: its own dice already use the bigger size,
+// and so does every die after it. (d2: 71 63 92 88 15 82 71 → 5d2 + 16d4)
 export function planFans(values, startDie) {
   let size = Number(startDie) || HOUSE.fansDieStart;
   const groups = [];
   for (const v of values) {
+    if (v >= HOUSE.fansGrowAt) size += HOUSE.fansDieGrowth;
     const n = fansDiceFor(v);
     if (n) {
       const last = groups[groups.length - 1];
       if (last && last.size === size) last.count += n; else groups.push({ count: n, size });
     }
-    if (v >= HOUSE.fansGrowAt) size += HOUSE.fansDieGrowth;
   }
   return { groups, endDie: size, expr: groups.map((g) => `${g.count}d${g.size}`).join("+") };
 }

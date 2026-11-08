@@ -24,7 +24,7 @@ export function roll(expression, opts = {}) {
     const term = raw.replace(/^[+-]/, "");
     const m = term.match(/^(\d*)d(\d+)$/);
     if (m) {
-      const count = Math.min(Number(m[1] || 1), 100);
+      const count = Math.min(Number(m[1] || 1), 1000);
       const sides = Math.max(Number(m[2]), 1);
       if (count === 1 && sides === 20 && (opts.advantage || opts.disadvantage) && !(opts.advantage && opts.disadvantage)) {
         const a = rollDie(20), b = rollDie(20);
@@ -51,7 +51,8 @@ export function roll(expression, opts = {}) {
   }
 
   const detail = parts.join(" ").replace(/^\+/, "").replace(/\s\+(\d)/g, " + $1").replace(/\s-(\d)/g, " - $1");
-  return { total, detail, natural, crit: natural === 20, fumble: natural === 1, dice: dice.slice(0, 12) };
+  // `dice` is capped at 12 for the animation; `all` has every die rolled.
+  return { total, detail, natural, crit: natural === 20, fumble: natural === 1, dice: dice.slice(0, 12), all: dice };
 }
 
 // Build "1d20+X" from a bonus number.

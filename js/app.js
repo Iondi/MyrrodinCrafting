@@ -1,9 +1,9 @@
 // =====================================================================
 //  MYR'RODIN CRAFTING — the panel
 // =====================================================================
-import * as S from "./store.js?v=1.2.0";
-import * as R from "./rules.js?v=1.2.0";
-import { roll } from "./dice.js?v=1.2.0";
+import * as S from "./store.js?v=1.2.2";
+import * as R from "./rules.js?v=1.2.2";
+import { roll } from "./dice.js?v=1.2.2";
 
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const fmt = (n) => (n >= 0 ? `+${n}` : `${n}`);
@@ -185,8 +185,15 @@ function gatherTab() {
 // Weekly: choose how many of the 7d100 go to each pool FIRST, then roll.
 const POOLS = [["fans", "Immortal Fans"], ["notoriety", "Notoriety"], ["rp", "Research Points"]];
 const weeklyPlan = {}; // character id -> { fans, notoriety, rp }
-const totalWeeklyDice = () => Number(String(R.HOUSE.weeklyDice).split("d")[0]) || 7;
-const planFor = () => weeklyPlan[current] || (weeklyPlan[current] = { fans: totalWeeklyDice(), notoriety: 0, rp: 0 });
+// GM can make the next roll cover two weeks (twice the dice).
+const weeksFor = () => (num(rec().weeks) === 2 ? 2 : 1);
+const totalWeeklyDice = () => (Number(String(R.HOUSE.weeklyDice).split("d")[0]) || 7) * weeksFor();
+const weeklyExpr = () => `${totalWeeklyDice()}d100`;
+const planFor = () => {
+  const p = weeklyPlan[current];
+  if (p && p.fans + p.notoriety + p.rp <= totalWeeklyDice() && p.n === totalWeeklyDice()) return p;
+  return (weeklyPlan[current] = { fans: totalWeeklyDice(), notoriety: 0, rp: 0, n: totalWeeklyDice() });
+};
 
 function weeklyTab() {
   const c = rec(), e = R.effects(c), w = c.weekly;
@@ -196,7 +203,7 @@ function weeklyTab() {
   // One weekly roll per character until the GM starts the next week.
   const locked = !!(w?.applied && !w.nextWeek);
   const last = w?.applied && w.rolls ? `<section class="card">
-      <div class="row"><h3>Last weekly roll</h3><small class="faint">${new Date(w.at).toLocaleDateString()}</small></div>
+      <div class="row"><h3>Last weekly roll${w.weeks === 2 ? " (2 weeks)" : ""}</h3><small class="faint">${new Date(w.at).toLocaleDateString()}</small></div>
       ${POOLS.map(([k, label]) => w.rolls[k]?.length ? `<div class="wres"><span class="lbl">${label}</span>
         <div class="wvals">${w.rolls[k].map((v) => `<span class="${k === "fans" && v >= R.HOUSE.fansGrowAt ? "hot" : ""}">${v}</span>`).join("")}</div>
         <b>${k === "fans" ? `+${w.gain.fans}${w.fansExpr ? ` <small class="faint">${esc(w.fansExpr)}</small>` : " <small class=\"faint\">no dice of 50+</small>"}` : `+${w.gain[k]}`}</b></div>` : "").join("")}
@@ -211,10 +218,11 @@ function weeklyTab() {
     </div>`).join("")}</div>
     <p class="small ${left ? "bad" : "good"}">${left ? `${left} ${left === 1 ? "die" : "dice"} left to assign.` : `All ${n} dice assigned.`}</p>
     ${locked ? `<p class="small muted">✓ This week's roll is done. ${isGM() ? "" : "The GM starts the next week."}</p>` : ""}
-    <button class="primary big-btn" data-act="weekly" ${left === 0 && canAct() && !busy && (!locked || isGM()) ? "" : "disabled"}>🎲 Roll ${R.HOUSE.weeklyDice}</button>
+    <button class="primary big-btn" data-act="weekly" ${left === 0 && canAct() && !busy && (!locked || isGM()) ? "" : "disabled"}>🎲 Roll ${weeklyExpr()}${weeksFor() === 2 ? " (2 weeks)" : ""}</button>
     ${isGM() && locked ? `<button class="link small" data-act="nextweek">Start the next week (let them roll again)</button>` : ""}
+    ${isGM() ? `<label class="chk gm-only" title="Only you see this"><input type="checkbox" data-weeks ${weeksFor() === 2 ? "checked" : ""} /> <span>Two weeks: next roll is ${(Number(String(R.HOUSE.weeklyDice).split("d")[0]) || 7) * 2}d100 <small class="faint">(GM only · goes back to one week after the roll)</small></span></label>` : ""}
     <details class="small muted"><summary>How Immortal Fans are worked out</summary>
-      <p>Each d100 for Fans is worth Fans dice: under 50 nothing, 50s 1, 60s 2, 70s 3, 80s 4, 90s 5, a natural 100 gives 10. A 90 or more makes the Fans die 2 sides bigger straight away, for the dice after it. Notoriety and Research Points add the number rolled.</p>
+      <p>Each d100 for Fans is worth Fans dice: under 50 nothing, 50s 1, 60s 2, 70s 3, 80s 4, 90s 5, a natural 100 gives 10. A 90 or more makes the Fans die 2 sides bigger straight away: its own dice and every one after it use the bigger die (d2: 71 63 92 88 15 82 71 → 5d2 + 16d4). Notoriety and Research Points add the number rolled.</p>
     </details>
   </section>${last}`;
 }
@@ -233,7 +241,7 @@ function rulesTab() {
     <li>A success uses the materials, counts toward that category, and rolls the <b>Notoriety die</b> and <b>Research die</b> for extra Notoriety and Research Points.</li>
     <li>A failure keeps the materials.</li>
     <li><b>Weekly:</b> choose how many of the ${R.HOUSE.weeklyDice} go to Immortal Fans, Notoriety and Research Points, then roll.</li>
-    <li><b>Immortal Fans:</b> each d100 given to Fans is worth Fans dice: under 50 nothing, 50s 1, 60s 2, 70s 3, 80s 4, 90s 5, a natural 100 gives 10. Everyone starts with a d2; every 90 or more makes it 2 sides bigger (d2 → d4 → d6…) for the dice after it. Add up the Fans dice for new fans.</li>
+    <li><b>Immortal Fans:</b> each d100 given to Fans is worth Fans dice: under 50 nothing, 50s 1, 60s 2, 70s 3, 80s 4, 90s 5, a natural 100 gives 10. Everyone starts with a d2; every 90 or more makes it 2 sides bigger (d2 → d4 → d6…), starting with that die's own Fans dice. Add up the Fans dice for new fans.</li>
     <li><b>Notoriety and Research Points:</b> a d100 given to them adds its number (Notoriety halved at Fans Tier I and doubled from Tier IV; Research doubled from Fans Tier VI).</li>
     <li>Penalties (Cause for Concern, Wild Sheep Chase, Tier I) only apply in that rank; bonuses carry into every rank above.</li>
   </ul></section>`;
@@ -306,7 +314,7 @@ async function doWeekly() {
     if (!plan[k]) { rolls[k] = []; continue; }
     const r = roll(`${plan[k]}d100`);
     share(`Weekly: ${plan[k]}d100 for ${label}`, r);
-    rolls[k] = r.dice.map((d) => d.v);
+    rolls[k] = r.all.map((d) => d.v);
   }
   const dieFrom = c.fansDie || R.HOUSE.fansDieStart;
   const fp = R.planFans(rolls.fans, dieFrom);
@@ -318,8 +326,9 @@ async function doWeekly() {
   await save((x) => {
     x.fans = num(x.fans) + gain.fans; x.notoriety = num(x.notoriety) + gain.notoriety; x.rp = num(x.rp) + gain.rp;
     x.fansDie = fp.endDie;
-    x.weekly = { at: Date.now(), applied: true, plan, rolls, gain, fansExpr: fp.expr, dieFrom, dieTo: fp.endDie, result };
-  }, `Weekly: ${result}${fp.endDie !== dieFrom ? `; Fans die now d${fp.endDie}` : ""}`);
+    x.weekly = { at: Date.now(), applied: true, plan, rolls, gain, fansExpr: fp.expr, dieFrom, dieTo: fp.endDie, result, weeks: weeksFor() };
+    x.weeks = 1;
+  }, `${weeksFor() === 2 ? "Two-week roll" : "Weekly"}: ${result}${fp.endDie !== dieFrom ? `; Fans die now d${fp.endDie}` : ""}`);
   busy = false; render();
   S.notify(`Weekly: ${result}`, "SUCCESS");
 }
@@ -375,6 +384,7 @@ app.addEventListener("change", (e) => {
   if (t.dataset.prof) save((x) => { x.prof = { ...x.prof, [t.dataset.prof]: num(t.value) }; });
   if (t.dataset.rank) save((x) => { x.rank = { ...x.rank, [t.dataset.rank]: num(t.value) }; });
   if (t.dataset.craftrank) { craftRank[t.dataset.craftrank] = num(t.value); render(); }
+  if (t.hasAttribute("data-weeks")) { save((x) => { x.weeks = t.checked ? 2 : 1; }); }
   if (t.hasAttribute("data-owner")) save((x) => { x.owner = t.value; });
 });
 app.addEventListener("keydown", (e) => { if (e.target.id === "add-name" && e.key === "Enter") app.querySelector('[data-act="add"]')?.click(); });
