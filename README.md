@@ -32,6 +32,8 @@ In Owlbear: **Profile → Extensions → Add Extension**, paste it, then turn on
 - **Notoriety / Research Points:** a d100 given to them adds its number (Notoriety halved at Fans Tier I, doubled from Tier IV; Research doubled from Fans Tier VI).
 - **Two weeks (GM only):** tick the box at the bottom of the Weekly tab and that character's next roll is 14d100; it goes back to one week afterwards.
 - Each character gets one weekly roll; the GM clicks **Start the next week** to let them roll again (the GM can always roll). The GM can also set anyone's Fans die on the Overview.
+- **🧮 Show the math (GM only):** after a weekly roll, a window walks through every d100: how many Fans dice it gave, when the Fans die grew, the running total, the actual Fans dice rolled, and the Notoriety / Research sums with multipliers. It opens by itself when the GM rolls; the button under "Last weekly roll" reopens it.
+- **GM resets:** **↺ Undo this roll** (under "Last weekly roll") takes back everything that roll added, puts the Fans die back, and lets them roll again. **New week for everyone** unlocks every character at once.
 
 **Rules** — all the tables, for quick reference at the table.
 
