@@ -1,9 +1,10 @@
 // =====================================================================
 //  MYR'RODIN CRAFTING — the panel
 // =====================================================================
-import * as S from "./store.js?v=1.4.0";
-import * as R from "./rules.js?v=1.4.0";
-import { roll } from "./dice.js?v=1.4.0";
+import * as S from "./store.js?v=1.5.0";
+import * as R from "./rules.js?v=1.5.0";
+import { roll } from "./dice.js?v=1.5.0";
+import * as Sheet from "./sheetsync.js?v=1.5.0";
 
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const fmt = (n) => (n >= 0 ? `+${n}` : `${n}`);
@@ -76,7 +77,7 @@ function overview() {
     <div class="grid3">
       ${stat("Crafting level", R.RANKS[highestRank()].name, `${R.TIERS[bestTier()]} at best`)}
       ${stat("Research Points", isGM() ? numInput("rp", c.rp, "Research Points") : c.rp, "spend to gather", "rp")}
-      ${stat("Crafts made", Object.values(c.succ).reduce((t, n) => t + num(n), 0), "successful")}
+      ${stat("Crafts made", num(c.succBase) + Object.values(c.succ).reduce((t, n) => t + num(n), 0), "successful")}
     </div>
   </section>
   <section class="card">
@@ -115,7 +116,74 @@ function overview() {
   ${isGM() && current ? `<section class="card gm"><h3>GM</h3>
     <label class="row"><span>Player</span><select data-owner>${[`<option value="">— nobody —</option>`, ...playersList.map((p) => `<option value="${esc(p.id)}" ${(c.owner || charInfo()?.owner) === p.id ? "selected" : ""}>${esc(p.name)}</option>`)].join("")}</select></label>
     ${charInfo()?.from === "manual" ? `<button class="link danger" data-act="remove">${armed === "remove" ? "Click again to remove" : "Remove this crafter"}</button>` : ""}
-  </section>` : ""}`;
+  </section>` : ""}
+  ${isGM() ? sheetCard() : ""}`;
+}
+
+// GM: the Craft Master Sheet connection.
+let sheetEditing = false, sheetMsg = "", sheetBusy = false;
+function sheetCard() {
+  const cfg = Sheet.sheetConfig(), st = Sheet.sheetStatus();
+  if (!cfg.url || sheetEditing) {
+    return `<section class="card gm sheet-card"><h3>📗 Google Sheet</h3>
+      <p class="muted small">Keeps a tab for each crafting character on your Craft Master Sheet, and adds every roll to a "Crafting Log" tab. Set up the script first (see the README), then paste its Web app link and SECRET here. Saved in this browser only.</p>
+      <label class="field"><span>Web app link</span><input id="sh-url" placeholder="https://script.google.com/macros/s/…/exec" value="${esc(cfg.url)}" /></label>
+      <label class="field"><span>SECRET</span><input id="sh-key" type="password" value="${esc(cfg.key)}" /></label>
+      <div class="row"><button class="primary small" data-act="sheetconnect" ${sheetBusy ? "disabled" : ""}>Connect</button>${cfg.url ? `<button class="link small" data-act="sheetcancel">Cancel</button>` : ""}<small class="${sheetMsg.startsWith("✓") ? "good" : "bad"}">${esc(sheetMsg)}</small></div>
+    </section>`;
+  }
+  const ago = st ? Math.round((Date.now() - st.at) / 60000) : null;
+  return `<section class="card gm sheet-card"><div class="row"><h3>📗 Google Sheet</h3><button class="link small" data-act="sheetedit">Change</button></div>
+    <p class="small ${st && !st.ok ? "bad" : "muted"}">${st ? (st.ok ? `✓ ${esc(st.note || "Up to date")} · ${ago < 1 ? "just now" : `${ago} min ago`}` : `⚠ ${esc(st.error)}`) : "Connected. Changes are written to the sheet a few seconds after they happen."}</p>
+    <div class="row left">
+      <button class="small" data-act="sheetsync" ${sheetBusy ? "disabled" : ""}>⟳ Write everyone now</button>
+      <button class="small" data-act="sheetimport" ${sheetBusy ? "disabled" : ""}>${armed === "sheetimport" ? "Click again: load the sheet's numbers" : "⇩ Load tabs from the sheet"}</button>
+    </div>
+    ${sheetMsg ? `<p class="small ${sheetMsg.startsWith("✓") ? "good" : "bad"}">${esc(sheetMsg)}</p>` : ""}
+    <p class="faint small">"Load" brings each tab's numbers into Owlbear (for characters like Kayden and Elisio). Matching characters are replaced; new ones are added as crafters.</p>
+  </section>`;
+}
+async function sheetAction(a) {
+  if (a === "sheetedit") { sheetEditing = true; sheetMsg = ""; render(); return; }
+  if (a === "sheetcancel") { sheetEditing = false; sheetMsg = ""; render(); return; }
+  if (a === "sheetconnect") {
+    const url = app.querySelector("#sh-url").value.trim(), key = app.querySelector("#sh-key").value.trim();
+    if (!/^https:\/\/script\.google(usercontent)?\.com\//.test(url)) { sheetMsg = "That should be the Web app link from Apps Script (https://script.google.com/macros/s/…/exec)."; render(); return; }
+    if (!key) { sheetMsg = "Type the SECRET from the script."; render(); return; }
+    Sheet.setSheetConfig(url, key);
+    sheetEditing = true; sheetBusy = true; sheetMsg = "Checking…"; render();
+    try { const r = await Sheet.pingSheet(); sheetMsg = `✓ Connected to "${r.title}". Character tabs found: ${r.tabs.join(", ") || "none"}.`; sheetEditing = false; }
+    catch (err) { sheetMsg = /fetch/i.test(err?.message || "") ? "Couldn't reach that link. Check it, and that the script is deployed for Anyone." : (err?.message || "Couldn't connect."); }
+    sheetBusy = false; render(); return;
+  }
+  if (a === "sheetsync") {
+    sheetBusy = true; render();
+    try { const r = await Sheet.syncNow(records, true); sheetMsg = r ? `✓ Wrote ${r.written?.length || 0} character tab${r.written?.length === 1 ? "" : "s"}${r.logged ? ` and ${r.logged} log lines` : ""}.` : "Nobody uses crafting yet."; }
+    catch (err) { sheetMsg = err?.message || "Couldn't write to the sheet."; }
+    sheetBusy = false; render(); return;
+  }
+  if (a === "sheetimport") {
+    if (armed !== "sheetimport") { armed = "sheetimport"; render(); return; }
+    armed = ""; sheetBusy = true; sheetMsg = "Reading the sheet…"; render();
+    try {
+      const { characters: tabs } = await Sheet.readSheet();
+      const squash = (x) => String(x || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+      const done = [];
+      for (const t of tabs) {
+        const match = chars.find((ch) => squash(ch.name) === squash(t.tab));
+        const id = match?.id || `c-${squash(t.tab) || Math.random().toString(36).slice(2, 9)}`;
+        const base = records[id] || R.blankCrafter(match?.name || t.tab);
+        const rec2 = Sheet.recordFromTab(t, base);
+        rec2.name = match?.name || base.name || t.tab;
+        records[id] = rec2;
+        await S.saveOne(id, rec2);
+        done.push(rec2.name);
+      }
+      chars = await S.characters(records);
+      sheetMsg = `✓ Loaded ${done.join(", ") || "nothing"} from the sheet.`;
+    } catch (err) { sheetMsg = err?.message || "Couldn't read the sheet."; }
+    sheetBusy = false; render(); return;
+  }
 }
 let armed = "";
 let showMath = false; // GM: the "how was this worked out" window
@@ -413,6 +481,7 @@ app.addEventListener("click", async (e) => {
   if (a === "craft") doCraft(b.dataset.cat);
   if (a === "gather") doGather(b.dataset.grade);
   if (a === "weekly") doWeekly();
+  if (a.startsWith("sheet")) { sheetAction(a); return; }
   if (a === "math") { showMath = true; render(); return; }
   if (a === "closemath") { showMath = false; render(); return; }
   if (a === "undoweek") {

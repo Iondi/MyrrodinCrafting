@@ -153,3 +153,6 @@ details summary { cursor: pointer; margin-top: 8px; }
 .math-t tr.grew td { background: #d8b46a14; }
 .math-t tr.none td { color: var(--faint); }
 .math .primary { justify-self: end; margin-top: 4px; }
+.sheet-card .field { display: grid; gap: 3px; margin: 6px 0; font-size: 11px; color: var(--muted); }
+.sheet-card .field input { width: 100%; }
+.row.left { justify-content: flex-start; }
