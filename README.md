@@ -27,7 +27,10 @@ In Owlbear: **Profile → Extensions → Add Extension**, paste it, then turn on
 
 **Gather** — spend Research Points on materials (D 1, C 3, B 5, A 10, S 17, SS 25, SSS 35). Better grades need a better proficiency. Cause for Concern doubles the cost; Nobility makes Grade A and under free.
 
-**Weekly** — roll 7d100 and split it between Immortal Fans, Notoriety and Research Points. Notoriety is halved at Fans Tier I and doubled from Tier IV; Research Points are doubled from Fans Tier VI. Only the GM can throw a roll away and let someone roll again.
+**Weekly** — roll 7d100, then give each die to Immortal Fans, Notoriety or Research Points (all start on Fans).
+- **Immortal Fans:** each d100 is worth Fans dice: under 50 nothing, 50–59 one, 60–69 two, 70–79 three, 80–89 four, 90–99 five, a natural 100 ten. Everyone starts with a **d2** Fans die; every 90 or higher makes it 2 sides bigger (d2 → d4 → d6…) straight away, for the dice after it. The Fans dice are then rolled and added up. Example at d2: 22 61 48 89 84 68 9 → 12d2.
+- **Notoriety / Research Points:** a d100 given to them adds its number (Notoriety halved at Fans Tier I, doubled from Tier IV; Research doubled from Fans Tier VI).
+- Only the GM can throw a roll away and let someone roll again. The GM can also set anyone's Fans die on the Overview.
 
 **Rules** — all the tables, for quick reference at the table.
 
