@@ -33,6 +33,14 @@ export function fansDiceFor(v) {
 // Work out the Fans dice for the d100s given to Fans, in the order rolled.
 // A 90+ grows the die right away: its own dice already use the bigger size,
 // and so does every die after it. (d2: 71 63 92 88 15 82 71 → 5d2 + 16d4)
+// Notoriety from a weekly d100: over 50 gives 1 Notoriety die, 90 or more
+// gives 2. The Notoriety die comes from the Immortal Fans tier (d4, d6 at
+// Tier III, d10 at Tier VIII).
+export function notorietyDiceFor(v) {
+  v = Number(v) || 0;
+  return v >= 90 ? 2 : v > 50 ? 1 : 0;
+}
+
 // Step by step, for the GM's "show the math" window.
 export function explainFans(values, startDie) {
   let size = Number(startDie) || HOUSE.fansDieStart;
